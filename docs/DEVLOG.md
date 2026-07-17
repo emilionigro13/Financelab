@@ -209,8 +209,48 @@ A day-by-day journal of building FinanceLab, a professional financial analysis p
 
 **Commit:** `feat: setup API client, CORS, and dashboard layout`
 
+## Day 7 — User Authentication (Register/Login) with bcrypt & JWT
+
+**Goal:** Build a complete authentication system: registration, login, password hashing with bcryptjs, and JWT token generation.
+
+**What was done:**
+
+- Created `src/utils/password.ts` with `hashPassword()` and `verifyPassword()` using bcryptjs (12 salt rounds).
+- Created `src/utils/jwt.ts` with `generateToken()` and `verifyToken()` using jsonwebtoken.
+- Created `src/middleware/auth.middleware.ts` with `authenticateToken()` to protect future routes (Bearer pattern).
+- Created `src/routes/auth.routes.ts` with endpoints `POST /api/v1/auth/register` and `POST /api/v1/auth/login`.
+- Updated `src/index.ts` to mount auth routes under `/api/v1/auth`.
+- Updated `prisma/schema.prisma` adding `firstName` and `lastName` to the `User` model.
+- Configured `.env` with `JWT_SECRET` and `JWT_EXPIRES_IN`.
+- Connected the backend to the PostgreSQL database on Supabase (Frankfurt region).
+
+**Issues encountered & resolved:**
+
+- `Cannot find module 'cors'` — `cors` and `@types/cors` packages were missing. Fixed with `npm install cors` and `npm install -D @types/cors`.
+- `Cannot find module '../routes/health.routes.js'` — conflict between TypeScript `NodeNext` (requires `.js` in imports) and `tsx` (does not want them). Fixed by changing `tsconfig.json` from `"module": "NodeNext"` to `"module": "ESNext"` and `"moduleResolution": "bundler"`, removing `.js` extensions from relative imports.
+- `No overload matches this call` on `jwt.sign()` — `expiresIn` type was not compatible. Fixed by reading `JWT_SECRET` and `JWT_EXPIRES_IN` directly from `process.env` in `jwt.ts` instead of passing them from config.
+- `@prisma/client did not initialize yet` — Prisma Client was not regenerated after schema changes. Fixed with `npx prisma generate`.
+- `DIRECT_URL: Required` — `DIRECT_URL` variable was missing from `.env`. Added to satisfy Zod validation.
+- `Can't reach database server at localhost:5432` — local PostgreSQL was not running. Decided to migrate to Supabase (already configured in previous days) by inserting real connection strings into `.env`.
+- `Route POST /api/v1/auth/register not found` — another Node process was using port 4000. Fixed by killing all node processes with `taskkill /F /IM node.exe` and restarting the FinanceLab server.
+- `Unknown argument 'firstName'` — Prisma schema only had a `name` field instead of `firstName`/`lastName`. Fixed by updating `schema.prisma` and re-running `npx prisma db push`.
+- Prisma `db push` stuck on Supabase port 6543 — the connection pooler does not support DDL/schema changes. Fixed by temporarily using port 5432 (direct connection) for the push, then restoring port 6543 for app runtime.
+- `EPERM: operation not permitted` during `prisma generate` — file locked by a previous process. Fixed with `taskkill /F /IM node.exe` and deleting the `node_modules\.prisma` folder before regenerating.
+
+**Concepts learned:**
+
+- bcryptjs vs bcrypt: bcryptjs is pure JavaScript, no native dependencies (no rebuild needed on Windows).
+- JWT architecture: header (algorithm), payload (claims), signature (HMAC). The token is stateless.
+- Bearer token pattern: `Authorization: Bearer &lt;token&gt;` is the de-facto standard for protected REST APIs.
+- Timing attack prevention: use the same error message ("Invalid credentials") for both non-existent email and wrong password.
+- Zod schema validation for user input: email format, password strength (min 8 chars, uppercase, lowercase, number).
+- Prisma connection pooler (port 6543) vs direct connection (port 5432): pooler is for queries, direct is for DDL/migrations.
+- `moduleResolution: "bundler"` in TypeScript: allows relative imports without `.js` extension, compatible with `tsx`.
+
+**Commit:** `feat: add user authentication with bcrypt and JWT`
+
 ---
 
 ## Next Up
 
-**Day 7:** User Authentication (Register/Login) with bcrypt password hashing and JWT token generation.
+**Day 8:** Frontend Authentication Pages — Login and Register UI with Next.js, client-side form validation, JWT management in localStorage, and protected routes.
