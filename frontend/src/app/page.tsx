@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserNav } from '@/components/user-nav';
 import {
   TrendingUp,
   BarChart3,
@@ -12,21 +13,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-/**
- * FinanceLab Landing Page
- * 
- * Professional homepage showcasing the platform's capabilities.
- * Designed to impress university admissions officers with:
- * - Clean, modern design
- * - Clear value proposition
- * - Feature highlights
- * - Professional typography and spacing
- */
-
 export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -66,18 +55,12 @@ export default function HomePage() {
             >
               <Github className="h-5 w-5" />
             </Link>
-            <Button asChild>
-              <Link href="/dashboard">
-                Get Started
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            <UserNav />
           </div>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* Hero Section */}
         <section className="relative overflow-hidden py-24 lg:py-32">
           <div className="container relative z-10">
             <div className="mx-auto max-w-3xl text-center">
@@ -110,13 +93,11 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Background decoration */}
           <div className="absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-emerald-100/50 to-transparent rounded-full blur-3xl" />
           </div>
         </section>
 
-        {/* Features Section */}
         <section id="features" className="py-24 bg-slate-50/50">
           <div className="container">
             <div className="mx-auto max-w-2xl text-center mb-16">
@@ -163,7 +144,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Stats Section */}
         <section id="analytics" className="py-24">
           <div className="container">
             <div className="grid gap-8 lg:grid-cols-2 items-center">
@@ -194,7 +174,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="py-24 bg-navy-950 text-white">
           <div className="container">
             <div className="mx-auto max-w-2xl text-center">
@@ -220,7 +199,6 @@ export default function HomePage() {
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t py-12 bg-slate-50">
         <div className="container">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -244,10 +222,6 @@ export default function HomePage() {
   );
 }
 
-/**
- * Feature Card Component
- * Displays a feature with icon, title, and description
- */
 function FeatureCard({
   icon,
   title,
@@ -274,10 +248,6 @@ function FeatureCard({
   );
 }
 
-/**
- * Stat Card Component
- * Displays a statistic with large number and label
- */
 function StatCard({ number, label }: { number: string; label: string }) {
   return (
     <div className="rounded-xl border bg-white p-6 text-center hover:shadow-md transition-shadow">
@@ -287,10 +257,6 @@ function StatCard({ number, label }: { number: string; label: string }) {
   );
 }
 
-/**
- * Tech Badge Component
- * Displays a technology name in a badge
- */
 function TechBadge({ name }: { name: string }) {
   return (
     <div className="flex items-center gap-2 rounded-lg border bg-white px-4 py-3">
