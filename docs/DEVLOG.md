@@ -218,4 +218,39 @@ Next.js environment variables: only variables prefixed with NEXT_PUBLIC_ are exp
 Commit: feat: add frontend authentication pages with JWT and protected routes
 Next Up
 
-Day 9: User Profile & Account Settings — Update profile (name, email), change password (requires old password), and delete account with confirmation modal. Will introduce PUT/DELETE protected endpoints on the backend.
+Day 9 — User Profile & Account Settings
+
+Goal: Build a complete profile settings page where authenticated users can update their information, change their password (requiring the old one), and delete their account with a confirmation modal. Requires new protected backend endpoints.
+What was done:
+Backend:
+Created src/middleware/auth.middleware.ts with authenticateToken() to extract and verify JWT from the Authorization: Bearer <token> header, attaching user payload to req.user.
+Extended src/routes/auth.routes.ts with four new protected endpoints:
+GET /api/v1/auth/me — returns current user data from the database (source of truth, not localStorage).
+PUT /api/v1/auth/me — updates profile fields (firstName, lastName, email) with partial validation.
+PUT /api/v1/auth/password — changes password only after verifying the old password with bcrypt.
+DELETE /api/v1/auth/me — permanently deletes the user account; Prisma cascade removes associated Portfolio records.
+Added Zod schemas for each new endpoint with .optional() for partial updates and .refine() to reject empty PUT /me requests.
+Frontend:
+Added apiPut() and apiDelete() to src/lib/api.ts with automatic Bearer token injection.
+Extended AuthContext with updateUser(data: Partial<User>) to merge partial updates into React state and localStorage instantly.
+Created src/app/dashboard/profile/page.tsx with three sections:
+Profile Information form (firstName, lastName, email) with success/error feedback.
+Change Password form requiring oldPassword, newPassword, and confirmPassword.
+Danger Zone with Delete Account button and a custom confirmation modal (fixed overlay, no external library).
+Updated src/app/dashboard/page.tsx to include a "Profile" link in the header next to UserNav.
+Issues encountered & resolved:
+Type '"/dashboard/profile"' is not assignable to type 'RouteImpl<...>' — Next.js 15 has strict route typing for the Link component href prop. Root cause: the /dashboard/profile route exists at runtime but TypeScript's generated route types don't always pick up nested dynamic routes immediately. Fixed by casting the href with as any as a temporary measure; in production this resolves itself after a build.
+Argument of type 'User | null' is not assignable to parameter of type 'Partial<User>' — after calling apiPut('/auth/me'), the response type declared user as potentially null. Root cause: TypeScript strict null checking on the generic response type. Fixed by explicitly typing the apiPut generic with the exact user shape and adding a runtime guard if (res.data.user) before calling updateUser().
+Missing next-env.d.ts caused Cannot find module './globals.css' again — the file was overwritten or deleted during file operations. Fixed by recreating frontend/next-env.d.ts with the Next.js triple-slash reference directives and restarting the TypeScript server.
+Dashboard returned 404 after login — /dashboard/layout.tsx existed with AuthGuard but there was no page.tsx inside the dashboard folder. Root cause: Next.js requires both layout.tsx and page.tsx for a route to render. Fixed by creating src/app/dashboard/page.tsx with the dashboard UI.
+Concepts learned:
+Express middleware pattern: middleware runs before route handlers, enabling authentication gating at the route level rather than inside every controller.
+TypeScript Partial<T> utility: converts all properties of a type to optional, perfect for PATCH/PUT partial update payloads.
+Bearer token extraction: splitting Authorization: Bearer <token> and verifying with the same jwt.verify used at login.
+Timing attack prevention on password change: verifying oldPassword with bcrypt before rejecting ensures attackers cannot enumerate valid tokens by observing response times.
+Custom modal without libraries: a fixed-position div with z-50 and a semi-transparent backdrop (bg-black/50) is lighter than installing Radix Dialog or similar for a simple confirmation.
+Database cascade deletes: Prisma's onDelete: Cascade on the User-Portfolio relation automatically cleans up dependent records when an account is deleted.
+Commit: feat: add user profile settings with update, password change and account deletion
+Next Up
+
+Day 10: Company Search & Detail Page — Integrate a real financial data API (Yahoo Finance / Finnhub / Alpha Vantage) for live stock data, build search autocomplete, and create company detail pages with price charts.

@@ -14,7 +14,12 @@ export default function DashboardPage() {
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight">FinanceLab</span>
           </Link>
-          <UserNav />
+          <div className="flex items-center gap-6">
+            <Link href={'/dashboard/profile' as any} className="text-sm font-medium hover:underline">
+              Profile
+            </Link>
+            <UserNav />
+          </div>
         </div>
       </header>
 
