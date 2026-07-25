@@ -252,5 +252,49 @@ Custom modal without libraries: a fixed-position div with z-50 and a semi-transp
 Database cascade deletes: Prisma's onDelete: Cascade on the User-Portfolio relation automatically cleans up dependent records when an account is deleted.
 Commit: feat: add user profile settings with update, password change and account deletion
 Next Up
+Day 10 — Company Search & Stock Detail with Live Market Data
 
-Day 10: Company Search & Detail Page — Integrate a real financial data API (Yahoo Finance / Finnhub / Alpha Vantage) for live stock data, build search autocomplete, and create company detail pages with price charts.
+Goal: Integrate real financial data via Finnhub API: stock search with autocomplete, live quotes, company profiles, and 60-day price charts.
+What was done:
+Backend:
+Created src/utils/cache.ts with an in-memory Cache class featuring TTL (time-to-live) expiration to respect Finnhub's 60 calls/minute rate limit.
+Created src/services/finnhub.service.ts as the Finnhub client with four methods: searchSymbols, getQuote, getCompanyProfile, getCandles.
+Implemented graceful degradation: when Finnhub returns 403 on /stock/candle (not included in the free plan), the service catches the error and falls back to generateMockCandles(), producing 60 days of realistic synthetic data based on the current quote price.
+Created src/routes/market.routes.ts exposing four endpoints under /api/v1/market:
+GET /search?q= — symbol search with autocomplete.
+GET /quote/:symbol — real-time price, change, open, high, low, previous close.
+GET /company/:symbol — company profile (name, industry, country, logo, market cap).
+GET /candles/:symbol — historical daily candles (60 days), with mock fallback.
+Frontend:
+Installed recharts for React-native chart rendering.
+Created src/components/search/SearchBar.tsx with:
+Debounce pattern (300ms delay) to avoid firing API calls on every keystroke.
+Dropdown results with symbol, company name, and type.
+Keyboard navigation support and click-outside-to-close.
+Created src/components/charts/StockChart.tsx rendering a responsive LineChart with:
+CartesianGrid, XAxis (dates), YAxis (prices), custom Tooltip.
+Emerald green line (#10b981) matching FinanceLab brand.
+Loading spinner and error states.
+Created src/app/dashboard/stock/[symbol]/page.tsx as a dynamic route:
+Fetches quote and profile in parallel with Promise.all.
+Displays company logo, name, ticker, industry, country.
+Shows live price with color-coded daily change (green/red).
+Four stat cards: Open, High, Low, Previous Close.
+Embeds the 60-day StockChart.
+Added "Search" link to the dashboard header.
+Updated dashboard grid with a "Search Stocks" card linking to /dashboard/search.
+Issues encountered & resolved:
+Finnhub API returned 403 Forbidden on /stock/candle — root cause: the free plan does not include historical candle data. Fixed by wrapping getCandles in a try/catch block that falls back to generateMockCandles() when the real API fails. The mock generator creates realistic random-walk prices seeded around the current quote, so the chart looks authentic.
+Unterminated string constant in stock/[symbol]/page.tsx — root cause: the file was truncated during copy-paste (message was cut off mid-line). Fixed by rewriting the complete file with all closing tags and brackets.
+Missing User-Agent header causing intermittent Cloudflare blocks — fixed by adding 'User-Agent': 'FinanceLab/1.0' to all Finnhub fetch calls.
+Concepts learned:
+API rate limiting and caching strategies: TTL-based in-memory cache prevents redundant external API calls and respects provider limits.
+Debounce pattern: delaying execution until the user stops typing reduces network load and improves perceived performance.
+Graceful degradation: when a third-party API feature is unavailable (paid tier), the system falls back to synthetic data rather than crashing.
+Dynamic routes in Next.js App Router: [symbol] captures any URL segment and passes it as a parameter.
+Parallel data fetching: Promise.all([quote, profile]) loads independent resources simultaneously instead of sequentially.
+Recharts library: composable React chart components (LineChart, ResponsiveContainer, Tooltip) with full theming control.
+Commit: feat: integrate Finnhub API for live stock search, quotes and price charts
+Next Up
+
+Day 11: Personal Watchlist — Users can add/remove stocks to a personal watchlist persisted in the database. Will introduce a Watchlist model in Prisma, protected POST/DELETE endpoints, and a watchlist section on the dashboard.

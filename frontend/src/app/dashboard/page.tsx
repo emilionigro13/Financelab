@@ -15,6 +15,9 @@ export default function DashboardPage() {
             <span className="text-xl font-bold tracking-tight">FinanceLab</span>
           </Link>
           <div className="flex items-center gap-6">
+            <Link href={'/dashboard/search' as any} className="text-sm font-medium hover:underline">
+              Search
+            </Link>
             <Link href={'/dashboard/profile' as any} className="text-sm font-medium hover:underline">
               Profile
             </Link>
@@ -42,6 +45,12 @@ export default function DashboardPage() {
             <h3 className="font-semibold">Watchlist</h3>
             <p className="mt-2 text-muted-foreground">0 stocks tracked</p>
           </div>
+          <Link href={'/dashboard/search' as any}>
+            <div className="rounded-xl border bg-card p-6 hover:shadow-md transition-shadow">
+              <h3 className="font-semibold">Search Stocks</h3>
+              <p className="mt-2 text-muted-foreground">Find and analyze companies</p>
+            </div>
+          </Link>
         </div>
       </main>
     </div>

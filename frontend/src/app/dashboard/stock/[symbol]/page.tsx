@@ -1,0 +1,140 @@
+'use client';
+
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { apiGet } from '@/lib/api';
+import { StockChart } from '@/components/charts/StockChart';
+import { UserNav } from '@/components/user-nav';
+
+interface Quote {
+  c: number;
+  d: number;
+  dp: number;
+  h: number;
+  l: number;
+  o: number;
+  pc: number;
+}
+
+interface Profile {
+  name: string;
+  finnhubIndustry: string;
+  country: string;
+  currency: string;
+  marketCapitalization: number;
+  weburl: string;
+  logo: string;
+}
+
+export default function StockPage() {
+  const params = useParams();
+  const symbol = (params.symbol as string).toUpperCase();
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      apiGet<{ success: boolean; data: Quote }>(`/market/quote/${encodeURIComponent(symbol)}`),
+      apiGet<{ success: boolean; data: Profile }>(`/market/company/${encodeURIComponent(symbol)}`),
+    ])
+      .then(([quoteRes, profileRes]) => {
+        setQuote(quoteRes.data);
+        setProfile(profileRes.data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [symbol]);
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-xl font-bold tracking-tight">FinanceLab</span>
+          </Link>
+          <div className="flex items-center gap-6">
+            <Link href={'/dashboard' as any} className="text-sm font-medium hover:underline">
+              Dashboard
+            </Link>
+            <Link href={'/dashboard/search' as any} className="text-sm font-medium hover:underline">
+              Search
+            </Link>
+            <UserNav />
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 container py-12">
+        <div className="mb-8">
+          <Link href={'/dashboard/search' as any} className="text-sm text-muted-foreground hover:underline">
+            &larr; Back to Search
+          </Link>
+        </div>
+
+        {loading ? (
+          <div className="flex h-64 items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+          </div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <div className="flex items-center gap-4 mb-2">
+                {profile?.logo && (
+                  <img src={profile.logo} alt={profile.name} className="h-12 w-12 rounded-lg object-contain bg-white p-1" />
+                )}
+                <div>
+                  <h1 className="text-3xl font-bold">{profile?.name || symbol}</h1>
+                  <p className="text-muted-foreground">
+                    {symbol} · {profile?.finnhubIndustry || 'N/A'} · {profile?.country || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-baseline gap-4">
+                <span className="text-4xl font-bold font-mono">${quote?.c.toFixed(2) || '0.00'}</span>
+                <span className={`text-lg font-medium ${(quote?.dp || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {quote && quote.dp >= 0 ? '+' : ''}{quote?.d.toFixed(2)} ({quote?.dp.toFixed(2)}%)
+                </span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-xs text-muted-foreground">Open</p>
+                  <p className="text-lg font-mono font-semibold">${quote?.o.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-xs text-muted-foreground">High</p>
+                  <p className="text-lg font-mono font-semibold">${quote?.h.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-xs text-muted-foreground">Low</p>
+                  <p className="text-lg font-mono font-semibold">${quote?.l.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border bg-card p-4">
+                  <p className="text-xs text-muted-foreground">Prev Close</p>
+                  <p className="text-lg font-mono font-semibold">${quote?.pc.toFixed(2)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border bg-card p-6">
+              <h2 className="text-xl font-semibold mb-6">Price History (60 Days)</h2>
+              <StockChart symbol={symbol} />
+            </div>
+
+            {profile?.weburl && (
+              <div className="mt-6">
+                <a href={profile.weburl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
+                  Visit company website &rarr;
+                </a>
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
