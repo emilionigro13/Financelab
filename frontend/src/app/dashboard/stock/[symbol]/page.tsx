@@ -7,6 +7,7 @@ import { apiGet, apiPost, apiDelete } from '@/lib/api';
 import { StockChart } from '@/components/charts/StockChart';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
+import { FinancialRatios } from '@/components/analysis/FinancialRatios';
 
 interface Quote {
   c: number;
@@ -42,6 +43,7 @@ export default function StockPage() {
   const [inWatchlist, setInWatchlist] = useState(false);
   const [watchlistItemId, setWatchlistItemId] = useState('');
   const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
 
   useEffect(() => {
     setLoading(true);
@@ -127,61 +129,115 @@ export default function StockPage() {
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-2">
                 {profile?.logo && (
-                  <img src={profile.logo} alt={profile.name} className="h-12 w-12 rounded-lg object-contain bg-white p-1" />
+                  <img
+                    src={profile.logo}
+                    alt={profile.name}
+                    className="h-12 w-12 rounded-lg object-contain bg-white p-1"
+                  />
                 )}
                 <div>
                   <h1 className="text-3xl font-bold">{profile?.name || symbol}</h1>
                   <p className="text-muted-foreground">
-                    {symbol} · {profile?.finnhubIndustry || 'N/A'} · {profile?.country || 'N/A'}
+                    {symbol} &middot; {profile?.finnhubIndustry || 'N/A'} &middot; {profile?.country || 'N/A'}
                   </p>
                 </div>
               </div>
 
               <div className="mt-6 flex items-baseline gap-4">
                 <span className="text-4xl font-bold font-mono">${quote?.c.toFixed(2) || '0.00'}</span>
-                <span className={`text-lg font-medium ${(quote?.dp || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {quote && quote.dp >= 0 ? '+' : ''}{quote?.d.toFixed(2)} ({quote?.dp.toFixed(2)}%)
+                <span
+                  className={`text-lg font-medium ${
+                    (quote?.dp || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'
+                  }`}
+                >
+                  {quote && quote.dp >= 0 ? '+' : ''}
+                  {quote?.d.toFixed(2)} ({quote?.dp.toFixed(2)}%)
                 </span>
               </div>
 
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="rounded-lg border bg-card p-4">
-                  <p className="text-xs text-muted-foreground">Open</p>
-                  <p className="text-lg font-mono font-semibold">${quote?.o.toFixed(2)}</p>
-                </div>
-                <div className="rounded-lg border bg-card p-4">
-                  <p className="text-xs text-muted-foreground">High</p>
-                  <p className="text-lg font-mono font-semibold">${quote?.h.toFixed(2)}</p>
-                </div>
-                <div className="rounded-lg border bg-card p-4">
-                  <p className="text-xs text-muted-foreground">Low</p>
-                  <p className="text-lg font-mono font-semibold">${quote?.l.toFixed(2)}</p>
-                </div>
-                <div className="rounded-lg border bg-card p-4">
-                  <p className="text-xs text-muted-foreground">Prev Close</p>
-                  <p className="text-lg font-mono font-semibold">${quote?.pc.toFixed(2)}</p>
-                </div>
+              <div className="mt-6 border-b border-border">
+                <nav className="flex gap-6">
+                  <button
+                    onClick={() => setActiveTab('overview')}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'overview'
+                        ? 'border-emerald-500 text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('analysis')}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'analysis'
+                        ? 'border-emerald-500 text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Financial Analysis
+                  </button>
+                </nav>
               </div>
 
-              <div className="mt-6 flex gap-4">
-                <Button onClick={toggleWatchlist} disabled={watchlistLoading || !profile}>
-                  {watchlistLoading ? 'Loading...' : inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
-                </Button>
-              </div>
+              {activeTab === 'overview' && (
+                <div className="mt-8 space-y-8">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="rounded-lg border bg-card p-4">
+                      <p className="text-xs text-muted-foreground">Open</p>
+                      <p className="text-lg font-mono font-semibold">${quote?.o.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-card p-4">
+                      <p className="text-xs text-muted-foreground">High</p>
+                      <p className="text-lg font-mono font-semibold">${quote?.h.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-card p-4">
+                      <p className="text-xs text-muted-foreground">Low</p>
+                      <p className="text-lg font-mono font-semibold">${quote?.l.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg border bg-card p-4">
+                      <p className="text-xs text-muted-foreground">Prev Close</p>
+                      <p className="text-lg font-mono font-semibold">${quote?.pc.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <Button onClick={toggleWatchlist} disabled={watchlistLoading || !profile}>
+                      {watchlistLoading
+                        ? 'Loading...'
+                        : inWatchlist
+                        ? 'Remove from Watchlist'
+                        : 'Add to Watchlist'}
+                    </Button>
+                  </div>
+
+                  <div className="rounded-xl border bg-card p-6">
+                    <h2 className="text-xl font-semibold mb-6">Price History (60 Days)</h2>
+                    <StockChart symbol={symbol} />
+                  </div>
+
+                  {profile?.weburl && (
+                    <div>
+                      <a
+                        href={profile.weburl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Visit company website &rarr;
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'analysis' && (
+                <div className="mt-8">
+                  <h2 className="text-2xl font-bold mb-6">Financial Ratios</h2>
+                  <FinancialRatios symbol={symbol} />
+                </div>
+              )}
             </div>
-
-            <div className="rounded-xl border bg-card p-6">
-              <h2 className="text-xl font-semibold mb-6">Price History (60 Days)</h2>
-              <StockChart symbol={symbol} />
-            </div>
-
-            {profile?.weburl && (
-              <div className="mt-6">
-                <a href={profile.weburl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
-                  Visit company website &rarr;
-                </a>
-              </div>
-            )}
           </>
         )}
       </main>

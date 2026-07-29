@@ -51,6 +51,18 @@ export async function getCompanyProfile(symbol: string) {
   );
 }
 
+export async function getBasicFinancials(symbol: string) {
+  return fetchFinnhub<{
+    metric: Record<string, number>;
+    metricType: string;
+    series: unknown;
+  }>(
+    `/stock/metric?symbol=${encodeURIComponent(symbol)}&metric=all`,
+    `metrics:${symbol.toLowerCase()}`,
+    3600
+  );
+}
+
 function generateMockCandles(symbol: string) {
   const days = 60;
   const t: number[] = [];

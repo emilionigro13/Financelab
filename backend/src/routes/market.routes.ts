@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { searchSymbols, getQuote, getCompanyProfile, getCandles } from '../services/finnhub.service.js';
+import { analyzeStock } from '../services/analysis.engine.js';
 
 const router = Router();
 
@@ -48,6 +49,16 @@ router.get('/candles/:symbol', async (req: Request, res: Response) => {
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Candles failed' });
+  }
+});
+
+router.get('/analysis/:symbol', async (req: Request, res: Response) => {
+  try {
+    const symbol = req.params.symbol as string;
+    const data = await analyzeStock(symbol);
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Analysis failed' });
   }
 });
 
