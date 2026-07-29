@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+url = env("DIRECT_URL")
 }
 
 model User {
@@ -17,6 +17,7 @@ model User {
   updatedAt DateTime @updatedAt
 
   portfolios Portfolio[]
+  watchlists Watchlist[]
 }
 
 model Portfolio {
@@ -27,4 +28,16 @@ model Portfolio {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Watchlist {
+  id          String   @id @default(uuid())
+  userId      String
+  symbol      String
+  companyName String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, symbol])
 }

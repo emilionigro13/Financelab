@@ -3,9 +3,10 @@
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiGet } from '@/lib/api';
+import { apiGet, apiPost, apiDelete } from '@/lib/api';
 import { StockChart } from '@/components/charts/StockChart';
 import { UserNav } from '@/components/user-nav';
+import { Button } from '@/components/ui/button';
 
 interface Quote {
   c: number;
@@ -27,12 +28,20 @@ interface Profile {
   logo: string;
 }
 
+interface WatchlistItem {
+  id: string;
+  symbol: string;
+}
+
 export default function StockPage() {
   const params = useParams();
   const symbol = (params.symbol as string).toUpperCase();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [inWatchlist, setInWatchlist] = useState(false);
+  const [watchlistItemId, setWatchlistItemId] = useState('');
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -47,6 +56,41 @@ export default function StockPage() {
       })
       .catch(() => setLoading(false));
   }, [symbol]);
+
+  useEffect(() => {
+    apiGet<{ success: boolean; data: WatchlistItem[] }>('/watchlist')
+      .then((res) => {
+        const found = res.data.find((w) => w.symbol === symbol);
+        if (found) {
+          setInWatchlist(true);
+          setWatchlistItemId(found.id);
+        }
+      })
+      .catch(() => {});
+  }, [symbol]);
+
+  const toggleWatchlist = async () => {
+    if (!profile) return;
+    setWatchlistLoading(true);
+    try {
+      if (inWatchlist) {
+        await apiDelete(`/watchlist/${watchlistItemId}`);
+        setInWatchlist(false);
+        setWatchlistItemId('');
+      } else {
+        const res = await apiPost<{ success: boolean; data: { id: string } }>('/watchlist', {
+          symbol,
+          companyName: profile.name || symbol,
+        });
+        setInWatchlist(true);
+        setWatchlistItemId(res.data.id);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setWatchlistLoading(false);
+    }
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -117,6 +161,12 @@ export default function StockPage() {
                   <p className="text-xs text-muted-foreground">Prev Close</p>
                   <p className="text-lg font-mono font-semibold">${quote?.pc.toFixed(2)}</p>
                 </div>
+              </div>
+
+              <div className="mt-6 flex gap-4">
+                <Button onClick={toggleWatchlist} disabled={watchlistLoading || !profile}>
+                  {watchlistLoading ? 'Loading...' : inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                </Button>
               </div>
             </div>
 

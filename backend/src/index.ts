@@ -4,6 +4,7 @@ import { config } from './config.js';
 import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import marketRoutes from './routes/market.routes.js';
+import watchlistRoutes from './routes/watchlist.routes.js';
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/market', marketRoutes);
+app.use('/api/v1/watchlist', watchlistRoutes);
 
 app.listen(config.server.port, () => {
   console.log(`Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`);

@@ -296,5 +296,43 @@ Parallel data fetching: Promise.all([quote, profile]) loads independent resource
 Recharts library: composable React chart components (LineChart, ResponsiveContainer, Tooltip) with full theming control.
 Commit: feat: integrate Finnhub API for live stock search, quotes and price charts
 Next Up
+Day 11 — Personal Watchlist
 
-Day 11: Personal Watchlist — Users can add/remove stocks to a personal watchlist persisted in the database. Will introduce a Watchlist model in Prisma, protected POST/DELETE endpoints, and a watchlist section on the dashboard.
+Goal: Allow authenticated users to save stocks to a personal watchlist, view it on the dashboard with live prices, and remove items.
+What was done:
+Database:
+Added Watchlist model to prisma/schema.prisma with fields: id, userId, symbol, companyName, createdAt.
+Enforced composite unique constraint @@unique([userId, symbol]) so a user cannot add the same stock twice.
+Added onDelete: Cascade on the User relation so deleting an account cleans up watchlist entries automatically.
+Created the table manually via Supabase SQL Editor (db push blocked by network/port 5432 restriction).
+Backend:
+Created src/routes/watchlist.routes.ts with three protected endpoints:
+GET /api/v1/watchlist — lists all items for the logged-in user, ordered by newest first.
+POST /api/v1/watchlist — adds a stock; returns 409 if already present (unique constraint violation).
+DELETE /api/v1/watchlist/:id — removes an item using deleteMany({ id, userId }) to guarantee users can only delete their own entries.
+Mounted watchlist routes in src/index.ts under /api/v1/watchlist.
+Frontend:
+Updated src/app/dashboard/page.tsx with a "Your Watchlist" section that:
+Fetches the watchlist on mount.
+Fetches live quotes for each symbol in parallel via Promise.all.
+Displays cards with symbol, company name, price, and daily change (color-coded green/red).
+Links each card to the stock detail page.
+Updated src/app/dashboard/stock/[symbol]/page.tsx with:
+A toggle button "Add to Watchlist" / "Remove from Watchlist".
+On mount, checks if the current stock is already in the user's watchlist.
+Calls POST /watchlist or DELETE /watchlist/:id on click.
+Issues encountered & resolved:
+Property 'watchlist' does not exist on type 'PrismaClient' — root cause: Prisma Client was not regenerated after adding the Watchlist model to schema.prisma. Fixed by running npx prisma generate after creating the table in Supabase.
+EPERM: operation not permitted during prisma generate — root cause: the backend server was still running, locking the Prisma query engine DLL. Fixed by killing all node processes with taskkill /F /IM node.exe, deleting node_modules\.prisma\client, and regenerating.
+P1001: Can't reach database server at port 5432 — root cause: the direct PostgreSQL port is blocked by the local network. Fixed by creating the Watchlist table manually via Supabase SQL Editor instead of npx prisma db push.
+Supabase prompted about Row Level Security (RLS) — root cause: Supabase warns when creating tables without RLS. Fixed by clicking "Run without RLS" since our security is enforced at the Express middleware level, not at the database level.
+Type 'string | string[] | undefined' is not assignable to type 'string' on req.params.id — root cause: Express types req.params as potentially an array. Fixed by explicitly casting const id = req.params.id as string before passing it to Prisma.
+Concepts learned:
+Composite unique constraints: @@unique([userId, symbol]) enforces business rules at the database level, eliminating race conditions.
+deleteMany vs delete for security: deleteMany({ id, userId }) is idempotent and silently fails if the record doesn't belong to the user, preventing information leakage.
+N+1 query problem: fetching quotes for each watchlist item individually would be inefficient at scale. Mitigated here with Promise.all in the frontend; in production, a batch endpoint on the backend would be preferred.
+Optimistic UI pattern: the Add/Remove button state updates immediately after API success, giving instant feedback without waiting for a full page reload.
+Commit: feat: add personal watchlist with add/remove and live prices
+Next Up
+
+Day 12: Financial Ratios Calculator — Build an engine that computes key financial ratios (P/E, ROE, Debt-to-Equity, etc.) using Finnhub fundamental data. Add an "Analysis" tab to the stock detail page with formulas and explanations.
