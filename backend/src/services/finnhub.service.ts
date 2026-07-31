@@ -63,6 +63,28 @@ export async function getBasicFinancials(symbol: string) {
   );
 }
 
+export async function getFinancialStatements(symbol: string) {
+  return fetchFinnhub<{
+    data: Array<{
+      year: number;
+      quarter: number;
+      form: string;
+      startDate: string;
+      endDate: string;
+      filedDate: string;
+      financials: {
+        incomeStatement: Record<string, { label: string; value: number; unit: string }>;
+        balanceSheet: Record<string, { label: string; value: number; unit: string }>;
+        cashFlow: Record<string, { label: string; value: number; unit: string }>;
+      };
+    }>;
+  }>(
+    `/stock/financials-reported?symbol=${encodeURIComponent(symbol)}`,
+    `financials:${symbol.toLowerCase()}`,
+    21600
+  );
+}
+
 function generateMockCandles(symbol: string) {
   const days = 60;
   const t: number[] = [];

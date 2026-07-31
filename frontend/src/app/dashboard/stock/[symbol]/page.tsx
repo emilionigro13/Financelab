@@ -8,6 +8,7 @@ import { StockChart } from '@/components/charts/StockChart';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import { FinancialRatios } from '@/components/analysis/FinancialRatios';
+import { FinancialStatements } from '@/components/financials/FinancialStatements';
 
 interface Quote {
   c: number;
@@ -43,7 +44,7 @@ export default function StockPage() {
   const [inWatchlist, setInWatchlist] = useState(false);
   const [watchlistItemId, setWatchlistItemId] = useState('');
   const [watchlistLoading, setWatchlistLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analysis'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'statements'>('overview');
 
   useEffect(() => {
     setLoading(true);
@@ -177,6 +178,16 @@ export default function StockPage() {
                   >
                     Financial Analysis
                   </button>
+                  <button
+                    onClick={() => setActiveTab('statements')}
+                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'statements'
+                        ? 'border-emerald-500 text-foreground'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Financial Statements
+                  </button>
                 </nav>
               </div>
 
@@ -235,6 +246,13 @@ export default function StockPage() {
                 <div className="mt-8">
                   <h2 className="text-2xl font-bold mb-6">Financial Ratios</h2>
                   <FinancialRatios symbol={symbol} />
+                </div>
+              )}
+
+              {activeTab === 'statements' && (
+                <div className="mt-8">
+                  <h2 className="text-2xl font-bold mb-6">Financial Statements</h2>
+                  <FinancialStatements symbol={symbol} />
                 </div>
               )}
             </div>
