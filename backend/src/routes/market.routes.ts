@@ -66,7 +66,14 @@ router.get('/analysis/:symbol', async (req: Request, res: Response) => {
 router.get('/financials/:symbol', async (req: Request, res: Response) => {
   try {
     const symbol = req.params.symbol as string;
-    const data = await getNormalizedFinancials(symbol);
+    const period = req.query.period as string;
+
+    if (period && period !== 'annual' && period !== 'quarterly') {
+      res.status(400).json({ success: false, error: 'period must be "annual" or "quarterly"' });
+      return;
+    }
+
+    const data = await getNormalizedFinancials(symbol, period as 'annual' | 'quarterly');
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Financials failed' });

@@ -63,7 +63,7 @@ export async function getBasicFinancials(symbol: string) {
   );
 }
 
-export async function getFinancialStatements(symbol: string) {
+export async function getFinancialStatements(symbol: string, freq: 'annual' | 'quarterly' = 'annual') {
   return fetchFinnhub<{
     data: Array<{
       year: number;
@@ -72,15 +72,15 @@ export async function getFinancialStatements(symbol: string) {
       startDate: string;
       endDate: string;
       filedDate: string;
-      financials: {
-        incomeStatement: Record<string, { label: string; value: number; unit: string }>;
-        balanceSheet: Record<string, { label: string; value: number; unit: string }>;
-        cashFlow: Record<string, { label: string; value: number; unit: string }>;
+      report: {
+        ic: Array<{ concept: string; label: string; value: number; unit: string }>;
+        bs: Array<{ concept: string; label: string; value: number; unit: string }>;
+        cf: Array<{ concept: string; label: string; value: number; unit: string }>;
       };
     }>;
   }>(
-    `/stock/financials-reported?symbol=${encodeURIComponent(symbol)}`,
-    `financials:${symbol.toLowerCase()}`,
+    `/stock/financials-reported?symbol=${encodeURIComponent(symbol)}&freq=${freq}`,
+    `financials:${symbol.toLowerCase()}:${freq}`,
     21600
   );
 }

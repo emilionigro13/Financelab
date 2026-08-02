@@ -1,41 +1,155 @@
 import { getFinancialStatements } from './finnhub.service.js';
 
-const INCOME_KEYS: Record<string, string[]> = {
-  revenue: [
-    'us-gaap_RevenueFromContractWithCustomerExcludingAssessedTax',
-    'us-gaap_Revenues',
-    'us-gaap_SalesRevenueNet',
-    'us-gaap_TotalRevenues',
-  ],
-  cogs: [
-    'us-gaap_CostOfGoodsAndServicesSold',
-    'us-gaap_CostOfRevenue',
-    'us-gaap_CostOfGoodsSold',
-  ],
-  grossProfit: ['us-gaap_GrossProfit'],
-  operatingExpenses: [
-    'us-gaap_OperatingExpenses',
-    'us-gaap_SellingGeneralAndAdministrativeExpense',
-    'us-gaap_ResearchAndDevelopmentExpense',
-  ],
-  operatingIncome: ['us-gaap_OperatingIncomeLoss', 'us-gaap_OperatingIncome'],
-  netIncome: ['us-gaap_NetIncomeLoss', 'us-gaap_NetIncome'],
+interface MetricMapping {
+  keys: string[];
+  labelPatterns: string[];
+}
+
+const INCOME_METRICS: Record<string, MetricMapping> = {
+  revenue: {
+    keys: [
+      'us-gaap_RevenueFromContractWithCustomerExcludingAssessedTax',
+      'us-gaap_Revenues',
+      'us-gaap_SalesRevenueNet',
+      'us-gaap_TotalRevenues',
+      'us-gaap_SalesRevenueGoodsNet',
+      'us-gaap_SalesRevenueServicesNet',
+    ],
+    labelPatterns: ['revenue', 'total revenue', 'sales revenue', 'sales', 'net sales', 'products and services'],
+  },
+  cogs: {
+    keys: [
+      'us-gaap_CostOfGoodsAndServicesSold',
+      'us-gaap_CostOfRevenue',
+      'us-gaap_CostOfGoodsSold',
+      'us-gaap_CostOfSales',
+    ],
+    labelPatterns: ['cost of goods', 'cost of revenue', 'cost of sales', 'cost of products', 'cost of services'],
+  },
+  grossProfit: {
+    keys: ['us-gaap_GrossProfit', 'us-gaap_GrossMargin'],
+    labelPatterns: ['gross profit', 'gross margin'],
+  },
+  operatingExpenses: {
+    keys: [
+      'us-gaap_OperatingExpenses',
+      'us-gaap_SellingGeneralAndAdministrativeExpense',
+      'us-gaap_ResearchAndDevelopmentExpense',
+    ],
+    labelPatterns: ['operating expenses', 'selling general and administrative', 'research and development', 'sg&a', 'r&d'],
+  },
+  operatingIncome: {
+    keys: ['us-gaap_OperatingIncomeLoss', 'us-gaap_OperatingIncome', 'us-gaap_IncomeLossFromOperations'],
+    labelPatterns: ['operating income', 'operating loss', 'income from operations', 'operating earnings', 'earnings from operations'],
+  },
+  netIncome: {
+    keys: [
+      'us-gaap_NetIncomeLoss',
+      'us-gaap_NetIncome',
+      'us-gaap_ProfitLoss',
+      'us-gaap_NetIncomeLossAvailableToCommonStockholdersBasic',
+      'us-gaap_NetIncomeLossAttributableToParent',
+    ],
+    labelPatterns: ['net income', 'net loss', 'net earnings', 'earnings', 'profit loss', 'net profit'],
+  },
 };
 
-const BALANCE_KEYS: Record<string, string[]> = {
-  cash: [
-    'us-gaap_CashAndCashEquivalentsAtCarryingValue',
-    'us-gaap_CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents',
-    'us-gaap_CashAndCashEquivalents',
-  ],
-  totalAssets: ['us-gaap_Assets', 'us-gaap_TotalAssets'],
-  totalLiabilities: ['us-gaap_Liabilities', 'us-gaap_TotalLiabilities'],
-  totalEquity: [
-    'us-gaap_StockholdersEquity',
-    'us-gaap_StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest',
-    'us-gaap_TotalEquity',
-  ],
-  longTermDebt: ['us-gaap_LongTermDebtNoncurrent', 'us-gaap_LongTermDebt'],
+const BALANCE_METRICS: Record<string, MetricMapping> = {
+  cash: {
+    keys: [
+      'us-gaap_CashAndCashEquivalentsAtCarryingValue',
+      'us-gaap_CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents',
+      'us-gaap_CashAndCashEquivalents',
+    ],
+    labelPatterns: ['cash and cash equivalents', 'cash and equivalents', 'cash and marketable securities', 'cash'],
+  },
+  totalAssets: {
+    keys: ['us-gaap_Assets', 'us-gaap_TotalAssets'],
+    labelPatterns: ['total assets', 'assets'],
+  },
+  totalLiabilities: {
+    keys: ['us-gaap_Liabilities', 'us-gaap_TotalLiabilities'],
+    labelPatterns: ['total liabilities', 'liabilities'],
+  },
+  totalEquity: {
+    keys: [
+      'us-gaap_StockholdersEquity',
+      'us-gaap_StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest',
+      'us-gaap_TotalEquity',
+      'us-gaap_ShareholdersEquity',
+    ],
+    labelPatterns: ['total equity', 'stockholders equity', 'shareholders equity', 'equity', 'total shareholders equity'],
+  },
+  longTermDebt: {
+    keys: ['us-gaap_LongTermDebtNoncurrent', 'us-gaap_LongTermDebt', 'us-gaap_LongTermDebtAndCapitalLeaseObligations'],
+    labelPatterns: ['long-term debt', 'long term debt', 'noncurrent debt', 'term debt', 'long-term obligations'],
+  },
+};
+
+const CASH_FLOW_METRICS: Record<string, MetricMapping> = {
+  operatingCashFlow: {
+    keys: [
+      'us-gaap_NetCashProvidedByUsedInOperatingActivities',
+      'us-gaap_CashProvidedByUsedInOperatingActivities',
+      'us-gaap_NetCashProvidedByUsedInOperatingActivitiesContinuingOperations',
+    ],
+    labelPatterns: [
+      'operating activities',
+      'cash provided by operating',
+      'cash used in operating',
+      'cash flows from operating',
+      'net cash from operating',
+      'cash generated by operating',
+    ],
+  },
+  investingCashFlow: {
+    keys: [
+      'us-gaap_NetCashProvidedByUsedInInvestingActivities',
+      'us-gaap_CashProvidedByUsedInInvestingActivities',
+    ],
+    labelPatterns: [
+      'investing activities',
+      'cash provided by investing',
+      'cash used in investing',
+      'cash flows from investing',
+      'net cash from investing',
+      'cash generated by investing',
+    ],
+  },
+  financingCashFlow: {
+    keys: [
+      'us-gaap_NetCashProvidedByUsedInFinancingActivities',
+      'us-gaap_CashProvidedByUsedInFinancingActivities',
+    ],
+    labelPatterns: [
+      'financing activities',
+      'cash provided by financing',
+      'cash used in financing',
+      'cash flows from financing',
+      'net cash from financing',
+      'cash used in financing',
+    ],
+  },
+  capitalExpenditures: {
+    keys: [
+      'us-gaap_PaymentsToAcquirePropertyPlantAndEquipment',
+      'us-gaap_CapitalExpenditures',
+      'us-gaap_PaymentsForLongLivedAssets',
+      'us-gaap_PaymentsToAcquireProductiveAssets',
+    ],
+    labelPatterns: [
+      'property plant and equipment',
+      'capital expenditure',
+      'capitalized expenditures',
+      'acquire productive assets',
+      'purchase of property',
+      'payments for acquisition of property',
+    ],
+  },
+  freeCashFlow: {
+    keys: ['us-gaap_FreeCashFlow'],
+    labelPatterns: ['free cash flow'],
+  },
 };
 
 interface FinnhubReportItem {
@@ -45,29 +159,29 @@ interface FinnhubReportItem {
   value: number;
 }
 
-function buildLookup(section: FinnhubReportItem[]): Record<string, FinnhubReportItem> {
-  const lookup: Record<string, FinnhubReportItem> = {};
-  for (const item of section) {
-    lookup[item.concept] = item;
-  }
-  return lookup;
-}
-
-function findValue(
+function findValueRobust(
   section: FinnhubReportItem[],
-  possibleKeys: string[]
+  mapping: MetricMapping
 ): { value: number; label: string; unit: string } | null {
   if (!section || section.length === 0) return null;
-  const lookup = buildLookup(section);
-  for (const key of possibleKeys) {
-    if (lookup[key]) {
-      return {
-        value: lookup[key].value,
-        label: lookup[key].label,
-        unit: lookup[key].unit,
-      };
+
+  for (const item of section) {
+    for (const key of mapping.keys) {
+      if (item.concept === key) {
+        return { value: item.value, label: item.label, unit: item.unit };
+      }
     }
   }
+
+  for (const item of section) {
+    const labelLower = item.label.toLowerCase();
+    for (const pattern of mapping.labelPatterns) {
+      if (labelLower.includes(pattern.toLowerCase())) {
+        return { value: item.value, label: item.label, unit: item.unit };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -77,44 +191,69 @@ export interface NormalizedStatement {
   endDate: string;
   incomeStatement: Record<string, { value: number; label: string; unit: string } | null>;
   balanceSheet: Record<string, { value: number; label: string; unit: string } | null>;
+  cashFlow: Record<string, { value: number; label: string; unit: string } | null>;
 }
 
-export async function getNormalizedFinancials(symbol: string): Promise<NormalizedStatement[]> {
-  const raw = await getFinancialStatements(symbol);
+export async function getNormalizedFinancials(
+  symbol: string,
+  period: 'annual' | 'quarterly' = 'annual'
+): Promise<NormalizedStatement[]> {
+  const raw = await getFinancialStatements(symbol, period);
 
   if (!raw.data || raw.data.length === 0) {
     return [];
   }
 
-  const annuals = raw.data
-    .filter((d: any) => d.quarter === 0 || d.quarter === '0')
-    .sort((a: any, b: any) => (b.year || 0) - (a.year || 0))
+  const sorted = raw.data
+    .sort((a: any, b: any) => {
+      const dateA = new Date(a.endDate || 0).getTime();
+      const dateB = new Date(b.endDate || 0).getTime();
+      return dateB - dateA;
+    })
     .slice(0, 4);
 
-  return annuals.map((item: any) => {
+  return sorted.map((item: any) => {
     const report = item.report || {};
     const incomeSection: FinnhubReportItem[] = report.ic || [];
     const balanceSection: FinnhubReportItem[] = report.bs || [];
+    const cashFlowSection: FinnhubReportItem[] = report.cf || [];
+
+    const isQuarterly = item.quarter && item.quarter !== 0 && item.quarter !== '0';
+    const periodLabel = isQuarterly ? `Q${item.quarter} ${item.year}` : `${item.year}`;
+
+    const incomeStatement: Record<string, { value: number; label: string; unit: string } | null> = {};
+    for (const [key, mapping] of Object.entries(INCOME_METRICS)) {
+      incomeStatement[key] = findValueRobust(incomeSection, mapping);
+    }
+
+    const balanceSheet: Record<string, { value: number; label: string; unit: string } | null> = {};
+    for (const [key, mapping] of Object.entries(BALANCE_METRICS)) {
+      balanceSheet[key] = findValueRobust(balanceSection, mapping);
+    }
+
+    const cashFlow: Record<string, { value: number; label: string; unit: string } | null> = {};
+    for (const [key, mapping] of Object.entries(CASH_FLOW_METRICS)) {
+      cashFlow[key] = findValueRobust(cashFlowSection, mapping);
+    }
+
+    if (!cashFlow.freeCashFlow && cashFlow.operatingCashFlow && cashFlow.capitalExpenditures) {
+      const ocf = cashFlow.operatingCashFlow.value;
+      const capex = cashFlow.capitalExpenditures.value;
+      const fcfValue = capex < 0 ? ocf + capex : ocf - capex;
+      cashFlow.freeCashFlow = {
+        value: fcfValue,
+        label: 'Free Cash Flow (Calculated)',
+        unit: cashFlow.operatingCashFlow.unit,
+      };
+    }
 
     return {
-      period: `${item.year}`,
+      period: periodLabel,
       form: item.form || 'N/A',
       endDate: item.endDate || 'N/A',
-      incomeStatement: {
-        revenue: findValue(incomeSection, INCOME_KEYS.revenue),
-        cogs: findValue(incomeSection, INCOME_KEYS.cogs),
-        grossProfit: findValue(incomeSection, INCOME_KEYS.grossProfit),
-        operatingExpenses: findValue(incomeSection, INCOME_KEYS.operatingExpenses),
-        operatingIncome: findValue(incomeSection, INCOME_KEYS.operatingIncome),
-        netIncome: findValue(incomeSection, INCOME_KEYS.netIncome),
-      },
-      balanceSheet: {
-        cash: findValue(balanceSection, BALANCE_KEYS.cash),
-        totalAssets: findValue(balanceSection, BALANCE_KEYS.totalAssets),
-        totalLiabilities: findValue(balanceSection, BALANCE_KEYS.totalLiabilities),
-        totalEquity: findValue(balanceSection, BALANCE_KEYS.totalEquity),
-        longTermDebt: findValue(balanceSection, BALANCE_KEYS.longTermDebt),
-      },
+      incomeStatement,
+      balanceSheet,
+      cashFlow,
     };
   });
 }
