@@ -35,6 +35,11 @@ interface WatchlistItem {
   symbol: string;
 }
 
+interface Portfolio {
+  id: string;
+  name: string;
+}
+
 export default function StockPage() {
   const params = useParams();
   const symbol = (params.symbol as string).toUpperCase();
@@ -45,6 +50,11 @@ export default function StockPage() {
   const [watchlistItemId, setWatchlistItemId] = useState('');
   const [watchlistLoading, setWatchlistLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'statements'>('overview');
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState('');
+  const [buyShares, setBuyShares] = useState('');
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [buyLoading, setBuyLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -57,7 +67,10 @@ export default function StockPage() {
         setProfile(profileRes.data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((err) => {
+        alert('Error loading stock data: ' + (err instanceof Error ? err.message : String(err)));
+        setLoading(false);
+      });
   }, [symbol]);
 
   useEffect(() => {
@@ -70,6 +83,15 @@ export default function StockPage() {
         }
       })
       .catch(() => {});
+
+    apiGet<{ success: boolean; data: Portfolio[] }>('/portfolio')
+      .then((res) => {
+        setPortfolios(res.data);
+        if (res.data.length > 0) setSelectedPortfolio(res.data[0].id);
+      })
+      .catch((err) => {
+        alert('Error loading portfolios: ' + (err instanceof Error ? err.message : String(err)));
+      });
   }, [symbol]);
 
   const toggleWatchlist = async () => {
@@ -89,9 +111,41 @@ export default function StockPage() {
         setWatchlistItemId(res.data.id);
       }
     } catch (err) {
-      console.error(err);
+      alert('Watchlist error: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setWatchlistLoading(false);
+    }
+  };
+
+  const openBuyModal = () => {
+    if (portfolios.length === 0) {
+      alert('You need to create a portfolio first. Go to Portfolios section.');
+      return;
+    }
+    setShowBuyModal(true);
+  };
+
+  const handleBuy = async () => {
+    if (!selectedPortfolio || !buyShares || !profile) return;
+    const shares = parseInt(buyShares);
+    if (isNaN(shares) || shares <= 0) {
+      alert('Enter a valid number of shares');
+      return;
+    }
+    setBuyLoading(true);
+    try {
+      await apiPost(`/portfolio/${selectedPortfolio}/buy`, {
+        symbol,
+        companyName: profile.name || symbol,
+        shares,
+      });
+      setShowBuyModal(false);
+      setBuyShares('');
+      alert('Purchase successful');
+    } catch (err) {
+      alert('Purchase failed: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBuyLoading(false);
     }
   };
 
@@ -105,6 +159,9 @@ export default function StockPage() {
           <div className="flex items-center gap-6">
             <Link href={'/dashboard' as any} className="text-sm font-medium hover:underline">
               Dashboard
+            </Link>
+            <Link href={'/dashboard/portfolio' as any} className="text-sm font-medium hover:underline">
+              Portfolios
             </Link>
             <Link href={'/dashboard/search' as any} className="text-sm font-medium hover:underline">
               Search
@@ -130,11 +187,7 @@ export default function StockPage() {
             <div className="mb-8">
               <div className="flex items-center gap-4 mb-2">
                 {profile?.logo && (
-                  <img
-                    src={profile.logo}
-                    alt={profile.name}
-                    className="h-12 w-12 rounded-lg object-contain bg-white p-1"
-                  />
+                  <img src={profile.logo} alt={profile.name} className="h-12 w-12 rounded-lg object-contain bg-white p-1" />
                 )}
                 <div>
                   <h1 className="text-3xl font-bold">{profile?.name || symbol}</h1>
@@ -146,46 +199,20 @@ export default function StockPage() {
 
               <div className="mt-6 flex items-baseline gap-4">
                 <span className="text-4xl font-bold font-mono">${quote?.c.toFixed(2) || '0.00'}</span>
-                <span
-                  className={`text-lg font-medium ${
-                    (quote?.dp || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'
-                  }`}
-                >
-                  {quote && quote.dp >= 0 ? '+' : ''}
-                  {quote?.d.toFixed(2)} ({quote?.dp.toFixed(2)}%)
+                <span className={`text-lg font-medium ${(quote?.dp || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {quote && quote.dp >= 0 ? '+' : ''}{quote?.d.toFixed(2)} ({quote?.dp.toFixed(2)}%)
                 </span>
               </div>
 
               <div className="mt-6 border-b border-border">
                 <nav className="flex gap-6">
-                  <button
-                    onClick={() => setActiveTab('overview')}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'overview'
-                        ? 'border-emerald-500 text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
+                  <button onClick={() => setActiveTab('overview')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'overview' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                     Overview
                   </button>
-                  <button
-                    onClick={() => setActiveTab('analysis')}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'analysis'
-                        ? 'border-emerald-500 text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
+                  <button onClick={() => setActiveTab('analysis')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'analysis' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                     Financial Analysis
                   </button>
-                  <button
-                    onClick={() => setActiveTab('statements')}
-                    className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                      activeTab === 'statements'
-                        ? 'border-emerald-500 text-foreground'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
+                  <button onClick={() => setActiveTab('statements')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'statements' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                     Financial Statements
                   </button>
                 </nav>
@@ -214,11 +241,10 @@ export default function StockPage() {
 
                   <div className="flex gap-4">
                     <Button onClick={toggleWatchlist} disabled={watchlistLoading || !profile}>
-                      {watchlistLoading
-                        ? 'Loading...'
-                        : inWatchlist
-                        ? 'Remove from Watchlist'
-                        : 'Add to Watchlist'}
+                      {watchlistLoading ? 'Loading...' : inWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                    </Button>
+                    <Button onClick={openBuyModal} disabled={!profile}>
+                      Buy Shares
                     </Button>
                   </div>
 
@@ -229,12 +255,7 @@ export default function StockPage() {
 
                   {profile?.weburl && (
                     <div>
-                      <a
-                        href={profile.weburl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-primary hover:underline"
-                      >
+                      <a href={profile.weburl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">
                         Visit company website &rarr;
                       </a>
                     </div>
@@ -259,6 +280,55 @@ export default function StockPage() {
           </>
         )}
       </main>
+
+      {showBuyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-xl border bg-card p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">Buy {symbol}</h2>
+            <p className="text-sm text-muted-foreground mb-4">Current price: ${quote?.c.toFixed(2)}</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Portfolio</label>
+                <select
+                  value={selectedPortfolio}
+                  onChange={(e) => setSelectedPortfolio(e.target.value)}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  {portfolios.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Shares</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={buyShares}
+                  onChange={(e) => setBuyShares(e.target.value)}
+                  className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="0"
+                />
+              </div>
+
+              {buyShares && quote && (
+                <p className="text-sm text-muted-foreground">
+                  Estimated cost: ${(parseInt(buyShares || '0') * quote.c).toFixed(2)}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setShowBuyModal(false)}>Cancel</Button>
+              <Button onClick={handleBuy} disabled={buyLoading || !selectedPortfolio || !buyShares}>
+                {buyLoading ? 'Buying...' : 'Confirm Buy'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

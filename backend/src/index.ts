@@ -5,6 +5,7 @@ import healthRoutes from './routes/health.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import marketRoutes from './routes/market.routes.js';
 import watchlistRoutes from './routes/watchlist.routes.js';
+import portfolioRoutes from './routes/portfolio.routes.js';
 
 const app = express();
 
@@ -15,10 +16,16 @@ app.use(cors({
 
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
+
 app.use('/api/v1/health', healthRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/market', marketRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
+app.use('/api/v1/portfolio', portfolioRoutes);
 
 app.listen(config.server.port, () => {
   console.log(`Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`);

@@ -17,11 +17,21 @@ interface Quote {
   dp: number;
 }
 
+interface Portfolio {
+  id: string;
+  name: string;
+  totalValue: number;
+  totalPnl: number;
+  totalPnlPercent: number;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [watchlistLoading, setWatchlistLoading] = useState(true);
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
 
   useEffect(() => {
     apiGet<{ success: boolean; data: WatchlistItem[] }>('/watchlist')
@@ -47,7 +57,17 @@ export default function DashboardPage() {
         }
       })
       .catch(() => setWatchlistLoading(false));
+
+    apiGet<{ success: boolean; data: Portfolio[] }>('/portfolio')
+      .then((res) => setPortfolios(res.data))
+      .catch(() => {})
+      .finally(() => setPortfolioLoading(false));
   }, []);
+
+  const totalPortfolioValue = portfolios.reduce((sum, p) => sum + p.totalValue, 0);
+  const totalPortfolioCost = portfolios.reduce((sum, p) => sum + (p.totalValue - p.totalPnl), 0);
+  const totalPortfolioPnl = totalPortfolioValue - totalPortfolioCost;
+  const totalPortfolioPnlPercent = totalPortfolioCost > 0 ? (totalPortfolioPnl / totalPortfolioCost) * 100 : 0;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -57,6 +77,9 @@ export default function DashboardPage() {
             <span className="text-xl font-bold tracking-tight">FinanceLab</span>
           </Link>
           <div className="flex items-center gap-6">
+            <Link href={'/dashboard/portfolio' as any} className="text-sm font-medium hover:underline">
+              Portfolios
+            </Link>
             <Link href={'/dashboard/search' as any} className="text-sm font-medium hover:underline">
               Search
             </Link>
@@ -77,11 +100,15 @@ export default function DashboardPage() {
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border bg-card p-6">
             <h3 className="font-semibold">Portfolio Value</h3>
-            <p className="mt-2 text-2xl font-mono">$0.00</p>
+            <p className="mt-2 text-2xl font-mono">
+              {portfolioLoading ? '—' : `$${totalPortfolioValue.toFixed(2)}`}
+            </p>
           </div>
           <div className="rounded-xl border bg-card p-6">
             <h3 className="font-semibold">Total Return</h3>
-            <p className="mt-2 text-2xl font-mono text-emerald-600">+0.00%</p>
+            <p className={`mt-2 text-2xl font-mono ${totalPortfolioPnl >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {portfolioLoading ? '—' : `${totalPortfolioPnl >= 0 ? '+' : ''}${totalPortfolioPnlPercent.toFixed(2)}%`}
+            </p>
           </div>
           <div className="rounded-xl border bg-card p-6">
             <h3 className="font-semibold">Watchlist</h3>
@@ -91,6 +118,12 @@ export default function DashboardPage() {
             <div className="rounded-xl border bg-card p-6 hover:shadow-md transition-shadow">
               <h3 className="font-semibold">Search Stocks</h3>
               <p className="mt-2 text-muted-foreground">Find and analyze companies</p>
+            </div>
+          </Link>
+          <Link href={'/dashboard/portfolio' as any}>
+            <div className="rounded-xl border bg-card p-6 hover:shadow-md transition-shadow">
+              <h3 className="font-semibold">Manage Portfolios</h3>
+              <p className="mt-2 text-muted-foreground">{portfolios.length} portfolio{portfolios.length !== 1 ? 's' : ''}</p>
             </div>
           </Link>
         </div>
@@ -119,21 +152,14 @@ export default function DashboardPage() {
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">{item.symbol}</h3>
                         {q && (
-                          <span
-                            className={`text-sm font-medium ${
-                              q.dp >= 0 ? 'text-emerald-600' : 'text-red-600'
-                            }`}
-                          >
-                            {q.dp >= 0 ? '+' : ''}
-                            {q.dp?.toFixed(2)}%
+                          <span className={`text-sm font-medium ${q.dp >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {q.dp >= 0 ? '+' : ''}{q.dp?.toFixed(2)}%
                           </span>
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">{item.companyName}</p>
                       {q && (
-                        <p className="mt-2 text-xl font-mono font-semibold">
-                          ${q.c?.toFixed(2)}
-                        </p>
+                        <p className="mt-2 text-xl font-mono font-semibold">${q.c?.toFixed(2)}</p>
                       )}
                     </div>
                   </Link>

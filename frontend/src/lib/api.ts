@@ -5,6 +5,14 @@ function getToken(): string | null {
   return localStorage.getItem('token');
 }
 
+function handleAuthError(status: number) {
+  if (status === 401 || status === 403) {
+    localStorage.removeItem('token');
+    alert('Session expired. Please log in again.');
+    window.location.href = '/login';
+  }
+}
+
 export async function apiGet<T>(endpoint: string): Promise<T> {
   const token = getToken();
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -14,6 +22,7 @@ export async function apiGet<T>(endpoint: string): Promise<T> {
     },
   });
   if (!res.ok) {
+    handleAuthError(res.status);
     const err = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(err.error || `GET ${endpoint} failed`);
   }
@@ -31,6 +40,7 @@ export async function apiPost<T>(endpoint: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    handleAuthError(res.status);
     const err = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(err.error || `POST ${endpoint} failed`);
   }
@@ -48,6 +58,7 @@ export async function apiPut<T>(endpoint: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    handleAuthError(res.status);
     const err = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(err.error || `PUT ${endpoint} failed`);
   }
@@ -64,6 +75,7 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
     },
   });
   if (!res.ok) {
+    handleAuthError(res.status);
     const err = await res.json().catch(() => ({ error: 'Unknown error' }));
     throw new Error(err.error || `DELETE ${endpoint} failed`);
   }
