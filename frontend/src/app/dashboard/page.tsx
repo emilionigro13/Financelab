@@ -5,6 +5,8 @@ import { UserNav } from '@/components/user-nav';
 import { apiGet } from '@/lib/api';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { AlertBadge } from '@/components/alerts/AlertBadge';
+import { AlertList } from '@/components/alerts/AlertList';
 
 interface WatchlistItem {
   id: string;
@@ -86,6 +88,7 @@ export default function DashboardPage() {
             <Link href={'/dashboard/profile' as any} className="text-sm font-medium hover:underline">
               Profile
             </Link>
+            <AlertBadge />
             <UserNav />
           </div>
         </div>
@@ -167,6 +170,11 @@ export default function DashboardPage() {
               })}
             </div>
           )}
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-2xl font-bold mb-6">Your Alerts</h2>
+          <AlertList />
         </section>
       </main>
     </div>

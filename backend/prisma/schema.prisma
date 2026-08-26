@@ -18,6 +18,7 @@ model User {
 
   portfolios Portfolio[]
   watchlists Watchlist[]
+  alerts     PriceAlert[]
 }
 
 model Portfolio {
@@ -76,4 +77,26 @@ model Transaction {
 
   @@index([portfolioId])
   @@index([portfolioId, symbol])
+}
+
+model PriceAlert {
+  id             String    @id @default(uuid())
+  userId         String
+  symbol         String
+  companyName    String
+  alertType      String    @default("PRICE_TARGET")
+  condition      String
+  targetPrice    Decimal?  @db.Decimal(12, 2)
+  referencePrice Decimal?  @db.Decimal(12, 2)
+  percentChange  Decimal?  @db.Decimal(5, 2)
+  isActive       Boolean   @default(true)
+  isTriggered    Boolean   @default(false)
+  triggeredAt    DateTime?
+  notifiedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isActive, isTriggered])
 }

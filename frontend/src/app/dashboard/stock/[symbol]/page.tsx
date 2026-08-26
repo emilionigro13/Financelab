@@ -9,6 +9,8 @@ import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import { FinancialRatios } from '@/components/analysis/FinancialRatios';
 import { FinancialStatements } from '@/components/financials/FinancialStatements';
+import { AlertForm } from '@/components/alerts/AlertForm';
+import { AlertBadge } from '@/components/alerts/AlertBadge';
 
 interface Quote {
   c: number;
@@ -55,6 +57,7 @@ export default function StockPage() {
   const [buyShares, setBuyShares] = useState('');
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -166,6 +169,7 @@ export default function StockPage() {
             <Link href={'/dashboard/search' as any} className="text-sm font-medium hover:underline">
               Search
             </Link>
+            <AlertBadge />
             <UserNav />
           </div>
         </div>
@@ -246,6 +250,9 @@ export default function StockPage() {
                     <Button onClick={openBuyModal} disabled={!profile}>
                       Buy Shares
                     </Button>
+                    <Button onClick={() => setShowAlertModal(true)} disabled={!profile}>
+                      Set Price Alert
+                    </Button>
                   </div>
 
                   <div className="rounded-xl border bg-card p-6">
@@ -325,6 +332,23 @@ export default function StockPage() {
               <Button onClick={handleBuy} disabled={buyLoading || !selectedPortfolio || !buyShares}>
                 {buyLoading ? 'Buying...' : 'Confirm Buy'}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAlertModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-xl border bg-card p-6 w-full max-w-md mx-4">
+            <h2 className="text-xl font-bold mb-4">Set Alert for {symbol}</h2>
+            <AlertForm
+              symbol={symbol}
+              companyName={profile?.name || symbol}
+              currentPrice={quote?.c || 0}
+              onSuccess={() => setShowAlertModal(false)}
+            />
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" onClick={() => setShowAlertModal(false)}>Close</Button>
             </div>
           </div>
         </div>

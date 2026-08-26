@@ -6,6 +6,8 @@ import authRoutes from './routes/auth.routes.js';
 import marketRoutes from './routes/market.routes.js';
 import watchlistRoutes from './routes/watchlist.routes.js';
 import portfolioRoutes from './routes/portfolio.routes.js';
+import alertRoutes from './routes/alert.routes.js';
+import { startAlertPolling } from './services/alert.service.js';
 
 const app = express();
 
@@ -26,7 +28,10 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/market', marketRoutes);
 app.use('/api/v1/watchlist', watchlistRoutes);
 app.use('/api/v1/portfolio', portfolioRoutes);
+app.use('/api/v1/alerts', alertRoutes);
 
 app.listen(config.server.port, () => {
   console.log(`Server running on port ${config.server.port} in ${config.server.nodeEnv} mode`);
 });
+
+startAlertPolling();
