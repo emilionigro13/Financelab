@@ -11,6 +11,7 @@ import { FinancialRatios } from '@/components/analysis/FinancialRatios';
 import { FinancialStatements } from '@/components/financials/FinancialStatements';
 import { AlertForm } from '@/components/alerts/AlertForm';
 import { AlertBadge } from '@/components/alerts/AlertBadge';
+import { NewsFeed } from '@/components/news/NewsFeed';
 
 interface Quote {
   c: number;
@@ -51,7 +52,7 @@ export default function StockPage() {
   const [inWatchlist, setInWatchlist] = useState(false);
   const [watchlistItemId, setWatchlistItemId] = useState('');
   const [watchlistLoading, setWatchlistLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'statements'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'statements' | 'news'>('overview');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState('');
   const [buyShares, setBuyShares] = useState('');
@@ -219,6 +220,9 @@ export default function StockPage() {
                   <button onClick={() => setActiveTab('statements')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'statements' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                     Financial Statements
                   </button>
+                  <button onClick={() => setActiveTab('news')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'news' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                    News
+                  </button>
                 </nav>
               </div>
 
@@ -281,6 +285,16 @@ export default function StockPage() {
                 <div className="mt-8">
                   <h2 className="text-2xl font-bold mb-6">Financial Statements</h2>
                   <FinancialStatements symbol={symbol} />
+                </div>
+              )}
+
+              {activeTab === 'news' && (
+                <div className="mt-8">
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-2xl font-bold">Latest News</h2>
+                    <span className="text-xs text-muted-foreground">Powered by Finnhub</span>
+                  </div>
+                  <NewsFeed symbol={symbol} />
                 </div>
               )}
             </div>

@@ -85,6 +85,26 @@ export async function getFinancialStatements(symbol: string, freq: 'annual' | 'q
   );
 }
 
+export async function getCompanyNews(symbol: string) {
+  const to = new Date().toISOString().split('T')[0];
+  const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  return fetchFinnhub<{
+    category: string;
+    datetime: number;
+    headline: string;
+    id: number;
+    image: string;
+    related: string;
+    source: string;
+    summary: string;
+    url: string;
+  }[]>(
+    `/company-news?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}`,
+    `news:${symbol.toLowerCase()}`,
+    300
+  );
+}
+
 function generateMockCandles(symbol: string) {
   const days = 60;
   const t: number[] = [];
