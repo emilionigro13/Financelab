@@ -110,3 +110,57 @@ export function aggregateSentiment(items: NewsItem[]): SentimentSummary {
     total,
   };
 }
+
+export interface DailySentiment {
+  date: string;
+  averageScore: number;
+  articleCount: number;
+  dominantSentiment: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+  sma3?: number;
+}
+
+export function analyzeSentimentTrend(news: Array<{ datetime: number; headline: string; summary: string }>): DailySentiment[] {
+  const map = new Map<string, { scores: number[]; sentiments: string[] }>();
+
+  for (const item of news) {
+    const date = new Date(item.datetime * 1000).toISOString().split('T')[0];
+    const result = analyzeSentiment(`${item.headline} ${item.summary}`);
+
+    if (!map.has(date)) {
+      map.set(date, { scores: [], sentiments: [] });
+    }
+    const entry = map.get(date)!;
+    entry.scores.push(result.score);
+    entry.sentiments.push(result.sentiment);
+  }
+
+  const trend: DailySentiment[] = [];
+  for (const [date, data] of map) {
+    const avg = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+    const counts = { POSITIVE: 0, NEGATIVE: 0, NEUTRAL: 0 };
+    for (const s of data.sentiments) {
+      counts[s as keyof typeof counts]++;
+    }
+    let dominant: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL' = 'NEUTRAL';
+    if (counts.POSITIVE > counts.NEGATIVE && counts.POSITIVE > counts.NEUTRAL) dominant = 'POSITIVE';
+    else if (counts.NEGATIVE > counts.POSITIVE && counts.NEGATIVE > counts.NEUTRAL) dominant = 'NEGATIVE';
+
+    trend.push({
+      date,
+      averageScore: Number(avg.toFixed(4)),
+      articleCount: data.scores.length,
+      dominantSentiment: dominant,
+    });
+  }
+
+  trend.sort((a, b) => a.date.localeCompare(b.date));
+
+  for (let i = 0; i < trend.length; i++) {
+    if (i >= 2) {
+      const sum = trend[i - 2].averageScore + trend[i - 1].averageScore + trend[i].averageScore;
+      trend[i].sma3 = Number((sum / 3).toFixed(4));
+    }
+  }
+
+  return trend;
+}

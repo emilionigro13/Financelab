@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { searchSymbols, getQuote, getCompanyProfile, getCandles, getCompanyNews } from '../services/finnhub.service.js';
 import { analyzeStock } from '../services/analysis.engine.js';
 import { getNormalizedFinancials } from '../services/financials.engine.js';
-import { analyzeSentiment, aggregateSentiment } from '../services/sentiment.engine.js';
+import { analyzeSentiment, aggregateSentiment, analyzeSentimentTrend } from '../services/sentiment.engine.js';
 
 const router = Router();
 
@@ -93,6 +93,17 @@ router.get('/news/:symbol', async (req: Request, res: Response) => {
     res.json({ success: true, data: { news: enriched, summary } });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'News failed' });
+  }
+});
+
+router.get('/sentiment-trend/:symbol', async (req: Request, res: Response) => {
+  try {
+    const symbol = req.params.symbol as string;
+    const rawNews = await getCompanyNews(symbol);
+    const trend = analyzeSentimentTrend(rawNews);
+    res.json({ success: true, data: trend });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Sentiment trend failed' });
   }
 });
 

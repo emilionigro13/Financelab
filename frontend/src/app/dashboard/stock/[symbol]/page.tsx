@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiGet, apiPost, apiDelete } from '@/lib/api';
 import { StockChart } from '@/components/charts/StockChart';
+import { SentimentTrendChart } from '@/components/charts/SentimentTrendChart';
 import { UserNav } from '@/components/user-nav';
 import { Button } from '@/components/ui/button';
 import { FinancialRatios } from '@/components/analysis/FinancialRatios';
@@ -43,6 +44,15 @@ interface Portfolio {
   name: string;
 }
 
+interface SentimentSummary {
+  overall: 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL';
+  averageScore: number;
+  positiveCount: number;
+  negativeCount: number;
+  neutralCount: number;
+  total: number;
+}
+
 export default function StockPage() {
   const params = useParams();
   const symbol = (params.symbol as string).toUpperCase();
@@ -52,13 +62,16 @@ export default function StockPage() {
   const [inWatchlist, setInWatchlist] = useState(false);
   const [watchlistItemId, setWatchlistItemId] = useState('');
   const [watchlistLoading, setWatchlistLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'statements' | 'news'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'analysis' | 'statements' | 'news' | 'sentiment'>('overview');
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState('');
   const [buyShares, setBuyShares] = useState('');
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
+  const [sentimentSummary, setSentimentSummary] = useState<SentimentSummary | null>(null);
+  const [compareSymbol, setCompareSymbol] = useState('');
+  const [compareInput, setCompareInput] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -75,6 +88,14 @@ export default function StockPage() {
         alert('Error loading stock data: ' + (err instanceof Error ? err.message : String(err)));
         setLoading(false);
       });
+  }, [symbol]);
+
+  useEffect(() => {
+    apiGet<{ success: boolean; data: { summary: SentimentSummary } }>(`/market/news/${encodeURIComponent(symbol)}`)
+      .then((res) => {
+        setSentimentSummary(res.data.summary);
+      })
+      .catch(() => {});
   }, [symbol]);
 
   useEffect(() => {
@@ -153,6 +174,12 @@ export default function StockPage() {
     }
   };
 
+  const sentimentBadge = (overall: string) => {
+    if (overall === 'POSITIVE') return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+    if (overall === 'NEGATIVE') return 'bg-red-500/10 text-red-600 border-red-500/20';
+    return 'bg-slate-500/10 text-slate-600 border-slate-500/20';
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -223,6 +250,9 @@ export default function StockPage() {
                   <button onClick={() => setActiveTab('news')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'news' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
                     News
                   </button>
+                  <button onClick={() => setActiveTab('sentiment')} className={`pb-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'sentiment' ? 'border-emerald-500 text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                    Sentiment
+                  </button>
                 </nav>
               </div>
 
@@ -246,6 +276,20 @@ export default function StockPage() {
                       <p className="text-lg font-mono font-semibold">${quote?.pc.toFixed(2)}</p>
                     </div>
                   </div>
+
+                  {sentimentSummary && (
+                    <div className="rounded-lg border bg-card p-4">
+                      <p className="text-xs text-muted-foreground mb-2">Overall Media Sentiment</p>
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-full border px-3 py-1 text-sm font-medium ${sentimentBadge(sentimentSummary.overall)}`}>
+                          {sentimentSummary.overall}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          Score: {sentimentSummary.averageScore.toFixed(4)} across {sentimentSummary.total} articles
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex gap-4">
                     <Button onClick={toggleWatchlist} disabled={watchlistLoading || !profile}>
@@ -295,6 +339,37 @@ export default function StockPage() {
                     <span className="text-xs text-muted-foreground">Powered by Finnhub</span>
                   </div>
                   <NewsFeed symbol={symbol} />
+                </div>
+              )}
+
+              {activeTab === 'sentiment' && (
+                <div className="mt-8 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold">Sentiment Trend (30 Days)</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Daily average sentiment score derived from media coverage. SMA3 line smooths daily noise.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={compareInput}
+                        onChange={(e) => setCompareInput(e.target.value.toUpperCase())}
+                        placeholder="Compare with (e.g. MSFT)"
+                        className="rounded-md border bg-background px-3 py-1.5 text-sm w-40"
+                      />
+                      <Button variant="outline" size="sm" onClick={() => setCompareSymbol(compareInput)}>
+                        Compare
+                      </Button>
+                      {compareSymbol && (
+                        <Button variant="ghost" size="sm" onClick={() => { setCompareSymbol(''); setCompareInput(''); }}>
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  <SentimentTrendChart symbol={symbol} compareSymbol={compareSymbol || undefined} />
                 </div>
               )}
             </div>

@@ -37,6 +37,7 @@ export function NewsFeed({ symbol }: { symbol: string }) {
   const [summary, setSummary] = useState<NewsResponse['summary'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState<'ALL' | 'POSITIVE' | 'NEGATIVE' | 'NEUTRAL'>('ALL');
 
   useEffect(() => {
     setLoading(true);
@@ -55,6 +56,8 @@ export function NewsFeed({ symbol }: { symbol: string }) {
         setLoading(false);
       });
   }, [symbol]);
+
+  const filteredArticles = filter === 'ALL' ? articles : articles.filter((a) => a.sentiment.sentiment === filter);
 
   if (loading) {
     return (
@@ -98,8 +101,25 @@ export function NewsFeed({ symbol }: { symbol: string }) {
           </div>
         </div>
       )}
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredArticles.length} of {articles.length} articles
+        </p>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as any)}
+          className="rounded-md border bg-background px-3 py-1.5 text-sm"
+        >
+          <option value="ALL">All Sentiments</option>
+          <option value="POSITIVE">Positive</option>
+          <option value="NEGATIVE">Negative</option>
+          <option value="NEUTRAL">Neutral</option>
+        </select>
+      </div>
+
       <div className="space-y-3">
-        {articles.map((article) => (
+        {filteredArticles.map((article) => (
           <NewsCard key={article.id} article={article} />
         ))}
       </div>

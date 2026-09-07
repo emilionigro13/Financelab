@@ -1,74 +1,74 @@
-import { Router, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { authenticateToken } from '../middleware/auth.middleware.js';
+import { PrismaClient } from '@prisma/client';
 
-const router = Router();
 const prisma = new PrismaClient();
+const router = Router();
 
-const createSchema = z.object({
-  symbol: z.string().min(1).max(20),
-  companyName: z.string().min(1).max(200),
-  alertType: z.enum(['PRICE_TARGET', 'PERCENT_CHANGE']),
+const createAlertSchema = z.object({
+  symbol: z.string().min(1),
+  companyName: z.string().min(1),
+  alertType: z.enum(['PRICE_TARGET', 'PERCENT_CHANGE', 'SENTIMENT_TREND']),
   condition: z.enum(['ABOVE', 'BELOW', 'PERCENT_UP', 'PERCENT_DOWN']),
-  targetPrice: z.coerce.number().positive().optional(),
-  referencePrice: z.coerce.number().positive().optional(),
-  percentChange: z.coerce.number().positive().optional(),
+  targetPrice: z.number().positive().optional(),
+  referencePrice: z.number().positive().optional(),
+  percentChange: z.number().positive().optional(),
 }).refine((data) => {
   if (data.alertType === 'PRICE_TARGET') {
-    return data.targetPrice !== undefined && ['ABOVE', 'BELOW'].includes(data.condition);
+    return data.condition === 'ABOVE' || data.condition === 'BELOW';
   }
   if (data.alertType === 'PERCENT_CHANGE') {
-    return data.referencePrice !== undefined && data.percentChange !== undefined && ['PERCENT_UP', 'PERCENT_DOWN'].includes(data.condition);
+    return data.condition === 'PERCENT_UP' || data.condition === 'PERCENT_DOWN';
+  }
+  if (data.alertType === 'SENTIMENT_TREND') {
+    return data.condition === 'BELOW';
   }
   return false;
-}, { message: 'Invalid alert configuration' });
+}, { message: 'Invalid condition for alert type' }).refine((data) => {
+  if (data.alertType === 'PRICE_TARGET') return data.targetPrice !== undefined;
+  if (data.alertType === 'PERCENT_CHANGE') return data.referencePrice !== undefined && data.percentChange !== undefined;
+  if (data.alertType === 'SENTIMENT_TREND') return data.percentChange !== undefined;
+  return false;
+}, { message: 'Missing required fields for alert type' });
 
-router.get('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.use(authenticateToken);
+
+router.get('/', async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user.id;
     const alerts = await prisma.priceAlert.findMany({
-      where: { userId: req.user!.userId },
+      where: { userId },
       orderBy: { createdAt: 'desc' },
     });
     res.json({ success: true, data: alerts });
-  } catch {
-    res.status(500).json({ success: false, error: 'Failed to load alerts' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to fetch alerts' });
   }
 });
 
-router.post('/', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-  console.log('[Alert] Body:', req.body);
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const validated = createSchema.parse(req.body);
-    const alert = await prisma.priceAlert.create({
-      data: {
-        userId: req.user!.userId,
-        symbol: validated.symbol.toUpperCase(),
-        companyName: validated.companyName,
-        alertType: validated.alertType,
-        condition: validated.condition,
-        targetPrice: validated.targetPrice,
-        referencePrice: validated.referencePrice,
-        percentChange: validated.percentChange,
-      },
-    });
-    res.status(201).json({ success: true, data: alert });
-  } catch (error) {
-    console.error('[Alert] Error:', error);
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'Validation failed' });
+    const userId = (req as any).user.id;
+    const parsed = createAlertSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ success: false, error: parsed.error.issues[0].message });
       return;
     }
-    res.status(500).json({ success: false, error: 'Failed to create alert' });
+    const alert = await prisma.priceAlert.create({
+      data: { ...parsed.data, userId },
+    });
+    res.json({ success: true, data: alert });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to create alert' });
   }
 });
 
-router.post('/:id/simulate', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:id/simulate', async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user.id;
     const id = req.params.id as string;
-    const alert = await prisma.priceAlert.findFirst({
-      where: { id, userId: req.user!.userId },
-    });
+    const alert = await prisma.priceAlert.findFirst({ where: { id, userId } });
     if (!alert) {
       res.status(404).json({ success: false, error: 'Alert not found' });
       return;
@@ -77,80 +77,71 @@ router.post('/:id/simulate', authenticateToken, async (req: AuthenticatedRequest
       where: { id },
       data: { isTriggered: true, triggeredAt: new Date() },
     });
-    res.json({ success: true, message: 'Alert simulated' });
-  } catch {
-    res.status(500).json({ success: false, error: 'Failed to simulate alert' });
+    res.json({ success: true, data: { message: 'Alert simulated' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Simulation failed' });
   }
 });
 
-router.put('/:id/read', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:id/read', async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user.id;
     const id = req.params.id as string;
-    await prisma.priceAlert.updateMany({
-      where: { id, userId: req.user!.userId, isTriggered: true },
-      data: { notifiedAt: new Date() },
-    });
-    res.json({ success: true, message: 'Marked as read' });
-  } catch {
-    res.status(500).json({ success: false, error: 'Failed to mark as read' });
-  }
-});
-
-router.put('/read-all', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    await prisma.priceAlert.updateMany({
-      where: { userId: req.user!.userId, isTriggered: true, notifiedAt: null },
-      data: { notifiedAt: new Date() },
-    });
-    res.json({ success: true, message: 'All alerts marked as read' });
-  } catch {
-    res.status(500).json({ success: false, error: 'Failed to mark all as read' });
-  }
-});
-
-router.put('/:id/reactivate', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const id = req.params.id as string;
-    const schema = z.object({
-      targetPrice: z.coerce.number().positive().optional(),
-      referencePrice: z.coerce.number().positive().optional(),
-      percentChange: z.coerce.number().positive().optional(),
-    });
-    const validated = schema.parse(req.body);
-    const result = await prisma.priceAlert.updateMany({
-      where: { id, userId: req.user!.userId },
-      data: {
-        isTriggered: false,
-        triggeredAt: null,
-        notifiedAt: null,
-        ...(validated.targetPrice !== undefined && { targetPrice: validated.targetPrice }),
-        ...(validated.referencePrice !== undefined && { referencePrice: validated.referencePrice }),
-        ...(validated.percentChange !== undefined && { percentChange: validated.percentChange }),
-      },
-    });
-    if (result.count === 0) {
+    const alert = await prisma.priceAlert.findFirst({ where: { id, userId } });
+    if (!alert) {
       res.status(404).json({ success: false, error: 'Alert not found' });
       return;
     }
-    res.json({ success: true, message: 'Alert reactivated' });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({ success: false, error: 'Validation failed' });
-      return;
-    }
-    res.status(500).json({ success: false, error: 'Failed to reactivate alert' });
+    await prisma.priceAlert.update({
+      where: { id },
+      data: { notifiedAt: new Date() },
+    });
+    res.json({ success: true, data: { message: 'Alert marked as read' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to update alert' });
   }
 });
 
-router.delete('/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/read-all', async (req: Request, res: Response) => {
   try {
-    const id = req.params.id as string;
-    await prisma.priceAlert.deleteMany({
-      where: { id, userId: req.user!.userId },
+    const userId = (req as any).user.id;
+    await prisma.priceAlert.updateMany({
+      where: { userId, isTriggered: true, notifiedAt: null },
+      data: { notifiedAt: new Date() },
     });
-    res.json({ success: true, message: 'Alert deleted' });
-  } catch {
-    res.status(500).json({ success: false, error: 'Failed to delete alert' });
+    res.json({ success: true, data: { message: 'All alerts marked as read' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to update alerts' });
+  }
+});
+
+router.put('/:id/reactivate', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const id = req.params.id as string;
+    const alert = await prisma.priceAlert.findFirst({ where: { id, userId } });
+    if (!alert) {
+      res.status(404).json({ success: false, error: 'Alert not found' });
+      return;
+    }
+    await prisma.priceAlert.update({
+      where: { id },
+      data: { isActive: true, isTriggered: false, triggeredAt: null, notifiedAt: null },
+    });
+    res.json({ success: true, data: { message: 'Alert reactivated' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to reactivate alert' });
+  }
+});
+
+router.delete('/:id', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const id = req.params.id as string;
+    await prisma.priceAlert.deleteMany({ where: { id, userId } });
+    res.json({ success: true, data: { message: 'Alert deleted' } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Failed to delete alert' });
   }
 });
 
