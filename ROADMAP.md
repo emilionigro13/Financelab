@@ -1,5 +1,7 @@
 # FinanceLab Roadmap
 
+  The following list of days does not concern working days but days divided into phases of the project
+
 ## Phase 1: Foundation (Days 1-10)
 - [x] Day 1: Project Planning & Architecture
 - [x] Day 2: Backend Skeleton with Express

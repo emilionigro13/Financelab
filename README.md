@@ -1,6 +1,6 @@
 # FinanceLab
 
-A professional financial analysis platform built for university portfolio applications.
+A professional financial analysis platform.
 
 ## Architecture
 
