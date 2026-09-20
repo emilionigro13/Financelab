@@ -197,6 +197,9 @@ export default function StockPage() {
             <Link href={'/dashboard/search' as any} className="text-sm font-medium hover:underline">
               Search
             </Link>
+            <Link href={'/dashboard/compare' as any} className="text-sm font-medium hover:underline">
+              Compare
+            </Link>
             <AlertBadge />
             <UserNav />
           </div>

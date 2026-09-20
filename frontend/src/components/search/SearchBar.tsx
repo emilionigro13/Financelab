@@ -4,9 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiGet } from '@/lib/api';
 
-export function SearchBar() {
+interface SearchResultItem {
+  description: string;
+  displaySymbol: string;
+  symbol: string;
+  type: string;
+}
+
+interface SearchBarProps {
+  onSelect?: (symbol: string) => void;
+  placeholder?: string;
+}
+
+export function SearchBar({ onSelect, placeholder = 'Search stocks (e.g. AAPL, Tesla)...' }: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Array<{ description: string; displaySymbol: string; symbol: string; type: string }>>([]);
+  const [results, setResults] = useState<SearchResultItem[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -30,7 +42,7 @@ export function SearchBar() {
     setLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await apiGet<{ success: boolean; data: { result: Array<{ description: string; displaySymbol: string; symbol: string; type: string }> } }>(`/market/search?q=${encodeURIComponent(query)}`);
+        const res = await apiGet<{ success: boolean; data: { result: SearchResultItem[] } }>(`/market/search?q=${encodeURIComponent(query)}`);
         setResults(res.data.result.slice(0, 8));
       } catch {
         setResults([]);
@@ -44,7 +56,11 @@ export function SearchBar() {
   const handleSelect = (symbol: string) => {
     setShowDropdown(false);
     setQuery('');
-    router.push(`/dashboard/stock/${symbol}` as any);
+    if (onSelect) {
+      onSelect(symbol);
+    } else {
+      router.push(`/dashboard/stock/${symbol}` as any);
+    }
   };
 
   return (
@@ -54,7 +70,7 @@ export function SearchBar() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setShowDropdown(true)}
-        placeholder="Search stocks (e.g. AAPL, Tesla)..."
+        placeholder={placeholder}
         className="w-full rounded-md border border-input bg-background px-4 py-2.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
       />
       {loading && (

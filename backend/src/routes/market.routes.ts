@@ -42,6 +42,15 @@ async function directSymbolLookup(query: string): Promise<SearchResultItem[]> {
   return results;
 }
 
+async function getCompanyData(symbol: string) {
+  const [quote, profile, analysis] = await Promise.all([
+    getQuote(symbol),
+    getCompanyProfile(symbol),
+    analyzeStock(symbol),
+  ]);
+  return { symbol, quote, profile, analysis };
+}
+
 router.get('/search', async (req: Request, res: Response) => {
   try {
     const q = req.query.q as string;
@@ -103,6 +112,22 @@ router.get('/analysis/:symbol', async (req: Request, res: Response) => {
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Analysis failed' });
+  }
+});
+
+router.get('/compare/:symbolA/:symbolB', async (req: Request, res: Response) => {
+  try {
+    const symbolA = (req.params.symbolA as string).toUpperCase();
+    const symbolB = (req.params.symbolB as string).toUpperCase();
+
+    const [a, b] = await Promise.all([
+      getCompanyData(symbolA),
+      getCompanyData(symbolB),
+    ]);
+
+    res.json({ success: true, data: { a, b } });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : 'Comparison failed' });
   }
 });
 
